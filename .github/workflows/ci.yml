@@ -44,6 +44,6 @@ jobs:
       - name: Compare content digests
         shell: bash
         run: |
-          sort -u artifacts/*/content-digest.txt > digests.txt
+          cat artifacts/*/content-digest.txt | tr -d '\r' | sort -u > digests.txt
           cat digests.txt
           test "$(wc -l < digests.txt)" -eq 1

@@ -149,7 +149,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"content {result.content_digest}")
     if args.digest_file:
         args.digest_file.parent.mkdir(parents=True, exist_ok=True)
-        args.digest_file.write_text(result.content_digest + "\n", encoding="utf-8")
+        args.digest_file.write_text(result.content_digest + "\n", encoding="utf-8", newline="\n")
     return 0
 
 
