@@ -1,3 +1,4 @@
 # Development and CI only. Not bundled into dbc2h.pyz.
-# M1 adds cantools, M2 hypothesis, M3 pytest-textual-snapshot.
+# M2 adds hypothesis, M3 pytest-textual-snapshot.
 pytest==9.2.0
+cantools==45.2.0

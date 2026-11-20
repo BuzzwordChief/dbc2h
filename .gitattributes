@@ -3,3 +3,6 @@
 * text=auto eol=lf
 *.whl binary
 *.bat text eol=crlf
+# DBC files keep their exact bytes (encoding and line endings are part of the tests).
+*.dbc -text
+*.DBC -text

@@ -3,7 +3,7 @@
 Werkzeug zum Erstellen, Verwalten und Exportieren von DBC-Dateien als C11-Header.
 Plan und Meilensteine: [PLAN.md](PLAN.md).
 
-Stand: **M0 (Grundgerüst & Build)**. Die TUI zeigt bisher nur eine Startseite.
+Stand: **M1 (Parser & Writer)**. Der Kern liest und schreibt DBC-Dateien verlustfrei; die TUI zeigt bisher nur eine Startseite.
 
 ## Benutzen
 

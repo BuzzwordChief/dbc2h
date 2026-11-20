@@ -129,11 +129,14 @@ dbc2h/
   __main__.py          Versionsprüfung (alte Syntax), dann cli.main
   cli.py               Argumente: ohne Subcommand TUI, sonst gen/check, --version
   core/                ── reines Python, null Abhängigkeiten ──
-    model.py           Datenmodell (dataclasses, slots=True)
+    model.py           Datenmodell (dataclasses, slots=True), snapshot() für Vergleiche
     statements.py      Statement-Klassen, Originaltext, Dirty-Flag, Verweise
-    parser.py          Tokenizer + Recursive-Descent-Parser, Fehler mit Zeile:Spalte
-    writer.py          DBC-Ausgabe: Originaltext für unveränderte Statements
+    lexer.py           Tokenizer mit Zeile:Spalte
+    parser.py          Statements abgrenzen, dann interpretieren; Fehler mit Zeile:Spalte
+    document.py        Modell + Statements, Einfügen/Entfernen/Dirty, Attributwerte
+    writer.py          kanonische Ausgabe geänderter und neuer Statements
     textio.py          Encoding-Erkennung, atomares Speichern, Änderungserkennung
+    dbcfile.py         Datei laden/neu/speichern (.bak einmal pro Sitzung)
     formula.py         Formelbeschreibung (typisierte Operationen) mit zwei Backends:
                        Python-Auswerter und C-Emitter
     numerics.py        binary32/binary64-Emulation, Bereiche, Einstufung, Cache
@@ -159,6 +162,7 @@ vendor/
   wheels/              gepinnte Wheels (py3-none-any) aus PyPI
   vendor.lock          Name, Version, sha256, Lizenz, URL je Wheel (JSON)
 tools/
+  make_candbpp_check.py  Testdateien für den manuellen CANdb++-Check
   vendor.py            lock / verify / sync der gebündelten Wheels
   build_pyz.py         Bündeln: Code + Ressourcen + Wheels + Lizenzen → dbc2h.pyz
   pyz_main.py          Starter an der Wurzel der .pyz (alte Syntax)
@@ -572,6 +576,8 @@ Jede Regel hat eine **stabile ID**, die bei jedem Befund ausgegeben wird. Fremde
 | E108 | Verweis ins Leere (dangling reference) | Fehler | nein |
 | E109 | Multiplexing ohne Selektor oder mit doppeltem Mux-Wert | Fehler | nein |
 | E110 | Erweitertes Multiplexing, vom Generator nicht unterstützt | Fehler | nein |
+| E111 | Ungültige Multiplex-Angabe (z. B. ein einzelnes `m`) | Fehler | nein |
+| E112 | Standard-ID größer als 0x7FF (fehlt das Extended-Flag?) | Fehler | nein |
 | E201 | Numerik `LOSSY` | Fehler | nein |
 | E202 | Numerik `UNREPRESENTABLE` | Fehler | nein |
 | E203 | Numerik `UNPROVEN` | Fehler | nein |
@@ -582,6 +588,7 @@ Jede Regel hat eine **stabile ID**, die bei jedem Befund ausgegeben wird. Fremde
 | W403 | Wertetabelle mit Werten außerhalb des Leitungsbereichs | Warnung | ja |
 | W404 | Ungenutzte Wertetabelle | Warnung | ja |
 | W405 | Fehlende Zykluszeit bei zyklischer Nachricht | Warnung | ja |
+| W406 | Name beginnt mit einer Ziffer (in DBC nicht erlaubt, kommt aber vor) | Warnung | ja |
 | I501 | Wertetabelle an skaliertem Signal, keine Konstanten erzeugt | Info | ja |
 | I502 | Namenskollision bei Wertbeschreibungen, durch Wert-Suffix aufgelöst | Info | ja |
 | I503 | Namenskonvention verletzt (konfigurierbar) | Info | ja |
@@ -668,9 +675,24 @@ Jeder Befund verweist auf ein Element. In der TUI springt man mit `<Enter>` dire
 |---|---|---|---|---|
 | macOS arm64 | 3.15.2 | 32/32 | ok | – (nur headless geprüft) |
 | Windows 11 x86-64 | 3.13 | 32/32 | ok | ok (SSH/ConPTY: Darstellung, Umlaute, `q`, Terminal wiederhergestellt) |
-| Linux | – | offen | offen | offen |
+| CI (GitHub Actions) | 3.13, 3.14, 3.15 | 9/9 Jobs grün (Linux x86-64, Windows x86-64, macOS arm64) | ok | – |
 
-Linux und Python 3.14 (sowie 3.13 auf macOS) sind lokal nicht verfügbar. Sie laufen erst in der CI-Matrix (`.github/workflows/ci.yml`), sobald das Repository auf GitHub liegt.
+Der Inhalts-Digest der `.pyz` ist in allen 9 CI-Builds gleich.
+
+**Stand M1 (2026-11-20):** umgesetzt. Offen ist nur der manuelle CANdb++-Check (`docs/candbpp-check.md`).
+
+- Korpus: 147 DBC-Dateien (57 aus opendbc, 90 aus den cantools-Tests, beide MIT, gepinnt in `tests/corpus/README.md`). Alle werden geladen. Laden und Speichern ohne Änderung ist **bytegleich**. Werden alle modellierten Statements kanonisch neu geschrieben, ergibt das erneute Laden dasselbe Modell.
+- Gegenprobe mit cantools: 137 Dateien stimmen in der Struktur überein. Die übrigen 10 lädt cantools nicht (7 × Standard-ID > 11 Bit, 2 × Name beginnt mit Ziffer, 1 × fehlendes `;`); dbc2h lädt sie.
+- Tests: 672 grün auf macOS (Python 3.15), 671 auf Windows (Python 3.13). Der übersprungene Test braucht POSIX-Symlinks.
+
+**Erkenntnisse aus dem Korpus**, eingearbeitet in Parser und Lint-Tabelle (Abschnitt 5):
+
+- Namen, die mit einer Ziffer beginnen (`2017_5`, `0_COUNTER`), sind in DBC nicht erlaubt, kommen aber vor. dbc2h liest sie mit Warnung (`W406`). Der Generator braucht dafür eine Namensumwandlung.
+- Ungültige Mux-Angaben (ein einzelnes `m`) werden unverändert erhalten, haben keine Multiplex-Bedeutung und ergeben `E111`.
+- Standard-IDs über 0x7FF ohne Extended-Flag kommen in opendbc häufig vor: `E112`.
+- Fehlende `;` vor dem nächsten Statement werden toleriert.
+- `//`-Zeilenkommentare werden als Leerraum erhalten.
+- Namen über 32 Zeichen stehen in den Attributen `System*LongSymbol`. Das Modell bietet sie als `long_name` an. **Der Generator soll diese langen Namen verwenden** (Entscheidung für M4).
 
 M3 (TUI) und M4 (Generator) hängen nicht voneinander ab und können parallel laufen. Beide bauen auf dem in M2 **gegen echtes C validierten** Numerikmodell auf. Das ist die zentrale Annahme des Projekts und wird deshalb so früh wie möglich geprüft.
 

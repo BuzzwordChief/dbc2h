@@ -98,3 +98,13 @@ def run_pyz(python: Path, pyz: Path, *args: str, timeout: float = 120) -> subpro
         [str(python), str(pyz), *args],
         capture_output=True, text=True, encoding="utf-8", timeout=timeout,
     )
+
+
+# --- DBC corpus ----------------------------------------------------------------------
+
+CORPUS_DIR = REPO / "tests" / "corpus"
+CORPUS = sorted(p for p in CORPUS_DIR.rglob("*") if p.suffix.lower() == ".dbc")
+
+
+def corpus_id(path: Path) -> str:
+    return path.relative_to(CORPUS_DIR).as_posix()

@@ -1,0 +1,91 @@
+VERSION ""
+
+
+NS_ : 
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: ECU_Engine ECU_Brake
+
+VAL_TABLE_ Gear 0 "Park" 1 "Reverse" 2 "Neutral" 3 "Drive" ;
+
+BO_ 291 VehicleStatus: 8 ECU_Engine
+ SG_ speed : 0|16@1+ (0.25,0) [0|16383.75] "km/h" ECU_Brake
+ SG_ coolant_temp : 23|8@0+ (0.75,-48) [-48|143.25] "°C" ECU_Brake
+ SG_ gear : 24|2@1+ (1,0) [0|3] "" ECU_Brake
+
+BO_ 2566844672 ExtendedMsg: 8 ECU_Brake
+ SG_ mode M : 0|2@1+ (1,0) [0|3] "" ECU_Engine
+ SG_ pressure m0 : 8|16@1+ (0.1,0) [0|6553.5] "bar" ECU_Engine
+ SG_ flow m1 : 8|16@1- (0.01,0) [-327.68|327.67] "l/min" ECU_Engine
+
+CM_ BO_ 291 "Pfad C:\\temp\\neu und \"Anführungszeichen\"";
+CM_ SG_ 291 speed "Geschwindigkeit über Grund, LSB 0,25 km/h";
+
+BA_DEF_  "dbc2h_Prefix" STRING ;
+BA_DEF_  "dbc2h_FloatType" ENUM "float","double";
+BA_DEF_  "dbc2h_StrictQuantization" INT 0 1;
+BA_DEF_  "dbc2h_FloatEpsLsb" FLOAT 0 0.5;
+BA_DEF_  "dbc2h_OutputMode" ENUM "header_only","split";
+BA_DEF_  "dbc2h_OutputDir" STRING ;
+BA_DEF_  "dbc2h_Lint" STRING ;
+BA_DEF_ BO_  "dbc2h_MsgIgnore" INT 0 1;
+BA_DEF_ SG_  "dbc2h_SigFloatType" ENUM "default","float","double";
+BA_DEF_ SG_  "dbc2h_SigIgnore" INT 0 1;
+BA_DEF_ SG_  "dbc2h_SigEnumComplete" INT 0 1;
+
+BA_DEF_DEF_  "dbc2h_Prefix" "";
+BA_DEF_DEF_  "dbc2h_FloatType" "float";
+BA_DEF_DEF_  "dbc2h_StrictQuantization" 0;
+BA_DEF_DEF_  "dbc2h_FloatEpsLsb" 0.0625;
+BA_DEF_DEF_  "dbc2h_OutputMode" "header_only";
+BA_DEF_DEF_  "dbc2h_OutputDir" ".";
+BA_DEF_DEF_  "dbc2h_Lint" "";
+BA_DEF_DEF_  "dbc2h_MsgIgnore" 0;
+BA_DEF_DEF_  "dbc2h_SigFloatType" "default";
+BA_DEF_DEF_  "dbc2h_SigIgnore" 0;
+BA_DEF_DEF_  "dbc2h_SigEnumComplete" 0;
+
+BA_ "dbc2h_Prefix" "pt";
+BA_ "dbc2h_FloatType" 1;
+BA_ "dbc2h_StrictQuantization" 1;
+BA_ "dbc2h_FloatEpsLsb" 0.03125;
+BA_ "dbc2h_OutputMode" 1;
+BA_ "dbc2h_OutputDir" "gen/can";
+BA_ "dbc2h_Lint" "E103=warning,W405=off";
+BA_ "dbc2h_MsgIgnore" BO_ 2566844672 1;
+BA_ "dbc2h_SigFloatType" SG_ 291 speed 1;
+BA_ "dbc2h_SigIgnore" SG_ 291 coolant_temp 1;
+BA_ "dbc2h_SigEnumComplete" SG_ 291 gear 1;
+
+VAL_ 291 gear 0 "Park" 1 "Reverse" 2 "Neutral" 3 "Drive" ;
+
+
