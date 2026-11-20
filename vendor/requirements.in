@@ -1,0 +1,4 @@
+# Runtime dependencies bundled into dbc2h.pyz.
+# Only pure-Python wheels under an allowed license (see tools/vendor.py).
+# After a change: python tools/vendor.py lock
+textual==8.2.8

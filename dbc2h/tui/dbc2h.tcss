@@ -1,0 +1,29 @@
+/* dbc2h theme: classic menuconfig/whiptail look.
+ * dbc2h/tui/selftest.py checks some of these values to prove that this file
+ * was loaded from the bundle. Update it when changing #dialog or #title. */
+
+Screen {
+    background: #0000aa;
+    align: center middle;
+}
+
+#dialog {
+    width: 60;
+    height: auto;
+    background: #aaaaaa;
+    color: #000000;
+    border: tall #ffffff;
+    padding: 0 1;
+}
+
+#title {
+    width: 100%;
+    content-align: center middle;
+    color: #aa0000;
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+#welcome {
+    width: 100%;
+}

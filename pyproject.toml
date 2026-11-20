@@ -1,0 +1,10 @@
+# dbc2h is shipped as dbc2h.pyz (python tools/build_pyz.py), not as an installable package.
+# This file only holds tool configuration.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
+markers = [
+    "pyz: tests that build dbc2h.pyz and run it in a clean environment",
+]

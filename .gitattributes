@@ -1,0 +1,5 @@
+# Source files always with LF, so that the content digest of dbc2h.pyz is the same
+# on every platform (core.autocrlf on Windows would change it otherwise).
+* text=auto eol=lf
+*.whl binary
+*.bat text eol=crlf

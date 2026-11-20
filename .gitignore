@@ -1,0 +1,8 @@
+.venv/
+build/
+dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Written into the archive by tools/build_pyz.py, never into the source tree.
+dbc2h/_bundle.json
