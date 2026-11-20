@@ -61,7 +61,7 @@ def test_version_in_clean_environment(built_pyz, clean_python):
 def test_selftest_in_clean_environment(built_pyz, clean_python):
     proc = run_pyz(clean_python, built_pyz.path, "--selftest")
     assert proc.returncode == 0, proc.stdout + proc.stderr
-    assert "ok   stylesheet #dialog" in proc.stdout
+    assert "ok   stylesheet #title" in proc.stdout
     assert "ok   quit with q" in proc.stdout
 
 

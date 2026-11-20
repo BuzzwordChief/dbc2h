@@ -3,7 +3,7 @@
 Werkzeug zum Erstellen, Verwalten und Exportieren von DBC-Dateien als C11-Header.
 Plan und Meilensteine: [PLAN.md](PLAN.md).
 
-Stand: **M4 (C-Generator)**. Der Kern liest und schreibt DBC-Dateien verlustfrei, prüft sie (`dbc2h check`) und erzeugt C-Header (`dbc2h gen`); die TUI zeigt bisher nur eine Startseite.
+Stand: **M3 und M4**. Der Kern liest und schreibt DBC-Dateien verlustfrei, prüft sie (`dbc2h check`) und erzeugt C-Header (`dbc2h gen`). Die TUI zeigt eine DBC vollständig an; bearbeiten lassen sich bisher nur Kommentare (M5 bringt die Formulare).
 
 ## Benutzen
 

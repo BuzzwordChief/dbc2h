@@ -83,7 +83,9 @@ Vorhandene Wertetabellen (`VAL_TABLE_`), Attribut-Definitionen und fremde Attrib
 | `n` / `d` / `r` | Neu / Löschen / Umbenennen im aktuellen Listenkontext |
 | `/` oder Strg+P | Suche: Textuals Befehlspalette mit Fuzzy-Suche über alle Nachrichten und Signale |
 | `u` / `U` | Rückgängig / Wiederholen |
-| `s` / `g` | Speichern / Generieren |
+| `s` / `S` | Speichern / Speichern unter |
+| `c` | Kommentar des angezeigten Elements bearbeiten |
+| `g` | Generieren (ab M5) |
 | `?` | Kontexthilfe |
 | `q` | Beenden (Rückfrage bei ungespeicherten Änderungen) |
 
@@ -139,18 +141,20 @@ dbc2h/
     numerics.py        Bereiche, Typwahl, Umrechnungsformeln (Conversion), float32-Emulation,
                        Einstufung; Python-Referenz für Encode/Decode
     lint.py            Prüfregeln mit stabiler ID, Severity und Elementverweis
-    edit.py            Änderungsoperationen (Command-Pattern) mit Undo/Redo,
-                       Verweise werden mitgezogen
+    edit.py            Änderungsbefehle (Command-Objekte), Undo/Redo-Verlauf (Memento:
+                       Dateitext vor/nach jedem Schritt), ObjectRef für stabile Adressen
+    naming.py          C-Bezeichner (snake_case, Schlüsselwörter, Kollisionen), ASCII-Kommentare
     codegen_c.py       C11-Generator (nutzt numerics.Conversion)
+    compilers.py       C-Compiler finden, generierte Tests übersetzen und ausführen
   tui/                 ── nutzt Textual ──
-    app.py             App, Screen-Stack, Bindings, Suche, Notfall-Speicherung
+    app.py             App: Dateien öffnen/neu/speichern, Undo/Redo, Größenprüfung,
+                       Notfall-Speicherung
     dbc2h.tcss         Theme (menuconfig-blau)
-    screens/           main_menu, network, nodes, messages, message_form, signals,
-                       signal_form, codegen, findings, frame_tester, about
-    widgets/
-      bitgrid.py       Bit-Layout-Editor
-      check_line.py    Live-Numerikprüfung
-      dialogs.py       YesNo, MsgBox, InputBox, Auswahl als ModalScreen
+    screens.py         Start, Hauptmenü, Netzwerk, Knoten, Nachrichten, Nachricht, Signal,
+                       Prüfergebnisse, Über (M3); Formulare folgen in M5
+    dialogs.py         MessageBox, Choice, InputBox als ModalScreen
+    text.py            sichere Anzeige von DBC-Texten (Steuerzeichen, kein Markup)
+    widgets/           bitgrid.py (M6), check_line.py (M5)
     selftest.py        Headless-Selbsttest der .pyz (versteckte Option --selftest)
 vendor/
   requirements.in      direkte Laufzeit-Abhängigkeiten, Lizenz- und Ignore-Direktiven
@@ -593,7 +597,7 @@ Ideen nach 1.0 und alles Zurückgestellte stehen in Abschnitt 10.
 | **M0** | Grundgerüst & Build | Paketstruktur, Versionsprüfung, Vendoring mit Hash-, Lizenz- und Pure-Python-Prüfung, reproduzierbarer `.pyz`-Build, CI-Matrix | **erledigt** |
 | **M1** | Parser & Writer | Datenmodell, Statement-Klassen und Verweise, Parser mit Fehlerpositionen, Writer mit Originaltext und Dirty-Flag, Encoding-Stufen, atomares Speichern mit Änderungserkennung, Einstellungs-Attribute | **erledigt** bis auf den manuellen CANdb++-Check |
 | **M2** | Layout, Numerik, Lint | `layout.py` (Bitmapping, Überlappung, DLC), `numerics.py` (Bereiche, Typwahl, `Conversion`, float-Prüfung durch vollständiges Durchrechnen, double per Schranke, Python-Referenz für Encode/Decode), `lint.py` mit den Regeln aus Abschnitt 5, `check`; Aufräumen von `settings.py` (2.4) | **erledigt** |
-| **M3** | TUI-Grundgerüst | App, Theme, Screen-Navigation, Standarddialoge, Datei öffnen/neu/speichern, Undo/Redo-Anbindung, Notfall-Speicherung, Dialoge für externe Änderungen und gesperrte Dateien, bereinigte Anzeige, Interaktionstests | Navigation durch eine geladene DBC (nur lesend plus Speichern) in Windows Terminal und macOS Terminal. Interaktionstests grün. |
+| **M3** | TUI-Grundgerüst | App, Theme, Screen-Navigation, Standarddialoge, Datei öffnen/neu/speichern, Undo/Redo-Anbindung, Notfall-Speicherung, Dialoge für externe Änderungen und gesperrte Dateien, bereinigte Anzeige, Interaktionstests | **erledigt** |
 | **M4** | C-Generator MVP | Normale Signale, signed/unsigned, Intel/Motorola, Ganzzahl/float/double, pack/unpack mit Bereichsprüfung auf Rohwerten, optionaler strenger Quantisierungsprüfung und atomarem Vertrag, Guards gegen unsichere Compiler-Modi, C++-Einbindung, Präfix/Namen (lange Namen, Ziffern am Anfang), generierte C-Tests, `gen`/`gen --check` | **erledigt** |
 | **M5** | TUI-Editor | Formulare und Listen für Knoten, Nachrichten, Signale (inkl. Wertbeschreibungen), Netzwerk-Einstellungen; Änderungsbefehle mit Verweisbehandlung, Eingabeprüfung gegen den Codec der Datei, Live-Prüfung, Prüfergebnisse mit Sprung, Suche, Generieren mit Vorschau | Eine DBC lässt sich komplett in der TUI anlegen und generieren. CANdb++ öffnet sie fehlerfrei. Kein Änderungsbefehl hinterlässt Verweise ins Leere. |
 | **M6** | Bit-Layout & Frame-Tester | Bit-Grid-Widget (Tastatur) mit Mux-Auswahl, Auto-Placement, Frame-Tester | Signal per Pfeiltasten verschieben ergibt korrektes Startbit für beide Byte-Orders |
@@ -661,6 +665,15 @@ Der Inhalts-Digest der `.pyz` ist in allen 9 CI-Builds gleich.
   | gcc und clang, Linux x86-64 (CI) | C11, C++17, gnu11 mit `-ffp-contract=fast` | in der CI, alle Korpusdateien in einem Job |
 - Die generierten Tests erkennen absichtlich eingebaute Fehler (falscher Shift, falscher Faktor, nicht genullter Puffer); eine Abweichung des Faktors um 0,1 % bleibt bei 8 Bit folgenlos, weil die Rundung trotzdem den richtigen Rohwert trifft.
 - Python-Referenz gegen cantools: Werte und Round-Trip für zufällige Frames in 8 Korpusdateien gleich.
+
+**Stand M3 (2026-11-20):** umgesetzt.
+
+- Screens: Start (öffnen, neu, beenden), Hauptmenü im menuconfig-Stil, Netzwerk-Einstellungen, Knoten, Nachrichten (Tabelle mit Fehlermarkierung), Nachricht (Signale mit C-Typ und Numerikstatus), Signal (alle Eigenschaften, Prüfzeile mit Abhilfen), Prüfergebnisse (Enter springt zum Element), Über. Die Titelzeile zeigt Datei, `*` bei Änderungen und den Pfad im Menü.
+- Eine erste Änderung ist schon da: Kommentare von Netzwerk, Knoten, Nachrichten und Signalen (`c`). Sie läuft über `core/edit.py` mit Undo/Redo; der Verlauf speichert den Dateitext vor und nach jedem Schritt, Bildschirme adressieren Objekte über `ObjectRef` und laden sie nach Undo neu.
+- Speichern mit Rückfrage bei externer Änderung (überschreiben, neu laden, speichern unter), Meldung mit Pfad der temporären Datei bei gesperrter Datei, Rückfrage beim Beenden mit ungespeicherten Änderungen. Nach einem Absturz liegen ungespeicherte Änderungen in `<datei>.dbc2h-recovery`; beim nächsten Öffnen wird die Wiederherstellung angeboten.
+- Texte aus der DBC werden ohne Steuerzeichen und nie als Rich-Markup angezeigt (Test mit ESC-Sequenz und `[b]` im Kommentar). Unter 80×24 erscheint ein Hinweis über dem Inhalt.
+- Abnahme im echten Terminal mit der gebauten `.pyz`: macOS (Pseudo-Terminal) und Windows (SSH/ConPTY), jeweils Hauptmenü → Nachrichten → Nachricht → Signal → dreimal zurück → `q`, Exit-Code 0.
+- Tests: 14 TUI-Interaktionstests und 6 Tests für den Undo-Verlauf; insgesamt 816 grün auf macOS.
 
 **Pflichtinhalte der Benutzerdokumentation (M8):**
 
