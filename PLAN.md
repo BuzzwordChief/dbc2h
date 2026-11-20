@@ -277,7 +277,7 @@ Alle dbc2h-Einstellungen liegen als **eigene DBC-Attribute** in der DBC. Die Dat
 | Signal | `dbc2h_SigIgnore` | 0/1 | 0 | M2 |
 
 - `BA_DEF_` und `BA_DEF_DEF_` werden erst geschrieben, wenn zum ersten Mal ein Wert vom Default abweicht. `BA_` wird nur für abweichende Werte geschrieben. Eine fremde DBC, die nur geöffnet und zum Generieren genutzt wird, bleibt dadurch unverändert.
-- `settings.py` kennt aus M1 noch drei weitere Attribute: `dbc2h_OutputMode`, `dbc2h_Lint`, `dbc2h_SigEnumComplete`. Ihre Features sind zurückgestellt (Abschnitt 10). Die TUI zeigt sie nicht an. Sie werden beim Start von M2 aus `settings.py` entfernt, und die CANdb++-Testdateien werden neu erzeugt.
+- Die Attribute `dbc2h_OutputMode`, `dbc2h_Lint` und `dbc2h_SigEnumComplete` aus M1 wurden in M2 entfernt, weil ihre Features zurückgestellt sind (Abschnitt 10).
 
 TUI-Vorlieben (zuletzt geöffnete Dateien) gehören dem Benutzer und nicht der DBC. Sie liegen im Konfigurationsverzeichnis des Benutzers, das `platformdirs` liefert (eine Textual-Abhängigkeit).
 
@@ -300,7 +300,7 @@ TUI-Vorlieben (zuletzt geöffnete Dateien) gehören dem Benutzer und nicht der D
 1. **Ganzzahlpfad:** Faktor und Offset sind ganzzahlig.
    - Der Feldtyp ist der kleinste `intN_t`/`uintN_t`, der den physikalischen Wertebereich über den Leitungsbereich fasst. Berechnet wird mit Python-Ganzzahlen.
    - Passt der Bereich weder in `int64_t` noch in `uint64_t`, ist das ein Fehler (`E202`).
-   - `pack` liefert `ERR_QUANTIZATION`, wenn `(phys − offset)` nicht durch den Faktor teilbar ist.
+   - Ist `(phys − offset)` nicht durch den Faktor teilbar, rundet `pack` auf den nächsten Rohwert (Hälfte weg von null); mit strenger Quantisierungsprüfung ist es `ERR_QUANTIZATION`.
 2. **Gleitkommapfad:** Der gewählte Typ ist der Signal-Override (`dbc2h_SigFloatType`), sonst der Netzwerk-Default (`dbc2h_FloatType`), sonst `float`.
 3. Signale mit `SIG_VALTYPE_` (IEEE float/double auf dem Bus) werden 1:1 zu `float` bzw. `double`.
 4. Der gewählte Typ wird **geprüft**. Fällt die Prüfung durch, ist das ein **Fehler**. Das Tool ändert den Typ nie selbst.
@@ -315,6 +315,12 @@ encode:  raw  = round((v - O) / F)      bzw.  round((v - O) * (1/F))  bei Zweier
 ```
 
 **float32 nachrechnen:** Python rechnet in binary64 und rundet nach jeder Operation auf binary32 (`array.array('f', …)`). Weil 53 ≥ 2·24 + 2 gilt, ist das für + − × ÷ bitgenau (Figueroa).
+
+**Ablauf der Prüfung** (jede Stufe ist für sich korrekt, die nächste kommt nur zum Zug, wenn die vorige nichts beweist):
+
+1. Faktor und Offset dyadisch und alle Produkte und Summen passen in die Mantisse → `EXACT` ohne Rechnen.
+2. Analytische Fehlerschranke für Decode (beide Varianten) und Round-Trip → `OK` in Mikrosekunden.
+3. Nur float: alle Rohwerte durchrechnen. Zuerst die 4096 Werte an beiden Enden des Bereichs, weil der Fehler mit dem Betrag wächst; ein ungeeignetes Signal fällt so meist in Millisekunden durch.
 
 **Zusammengefasste Multiplikation-Addition (FMA):** Compiler dürfen `raw * F + O` zu einer Operation mit nur einer Rundung zusammenziehen (Clang standardmäßig, GCC bei `-std=gnu11`, AArch64 und Cortex-M4F/M7 haben FMA). Das Ergebnis kann dann in der letzten Stelle abweichen. Diese Variante wird **nicht exakt nachgerechnet**, sondern nach oben abgeschätzt: Fehler der beiden Konstanten plus eine halbe ulp des Ergebnisses. Geprüft wird gegen das Maximum aus nachgerechneter getrennter Variante und dieser Schranke. Ob das auf echten Compilern hält, zeigen die generierten C-Tests in M4 (ein CI-Job mit `-ffp-contract=fast` auf arm64).
 
@@ -339,8 +345,8 @@ Beispiel (TUI-Prüfergebnisse bzw. `check`), Werte nachgerechnet:
 
 ```
 VehicleStatus.speed    16u  LSB 0.25           float   EXACT
-Engine.temp             8s  LSB 0.1  off -40   float   OK      max. Fehler 1.5e-5 LSB
-Trip.distance          20u  LSB 0.001          float   LOSSY   0.063 LSB bei raw=683677 (> 1/16)
+Engine.temp             8s  LSB 0.1  off -40   float   OK      max. Fehler ≤ 2.6e-5 LSB (Schranke)
+Trip.distance          20u  LSB 0.001          float   LOSSY   0.110645 LSB bei raw=1044480 (> 1/16)
                                                                → double wählen, LSB vergrößern oder Länge reduzieren
 Odo.distance           32u  LSB 0.001          float   LOSSY   32 Bit > 24 Bit Mantisse
                                                                → double wählen oder Länge reduzieren
@@ -514,7 +520,7 @@ Jede Regel hat eine **stabile ID**, die bei jedem Befund ausgegeben wird. **Fehl
 | ID | Regel | Severity |
 |---|---|---|
 | E101 | Signale überlappen sich (mux-bewusst: nur wenn beide gleichzeitig aktiv sein können) | Fehler |
-| E102 | Signal reicht über das DLC hinaus | Fehler |
+| E102 | Signal reicht über das DLC hinaus, oder DLC ist keine gültige CAN-/CAN-FD-Länge | Fehler |
 | E105 | Faktor 0 | Fehler |
 | E106 | Doppelte Nachrichten-ID | Fehler |
 | E107 | Doppelter Name (Nachricht, Signal in einer Nachricht, Knoten) | Fehler |
@@ -523,10 +529,12 @@ Jede Regel hat eine **stabile ID**, die bei jedem Befund ausgegeben wird. **Fehl
 | E110 | Erweitertes Multiplexing (`SG_MUL_VAL_`), vom Generator nicht unterstützt | Fehler |
 | E111 | Ungültige Multiplex-Angabe (z. B. ein einzelnes `m`) | Fehler |
 | E112 | Standard-ID größer als 0x7FF (fehlt das Extended-Flag?) | Fehler |
+| E113 | Ungültige Signallänge (0 oder > 64) oder IEEE-Signal nicht 32/64 Bit lang | Fehler |
 | E201 | Numerik `LOSSY` | Fehler |
 | E202 | Ganzzahlpfad: Bereich passt nicht in 64 Bit | Fehler |
 | W103 | Min/Max außerhalb des Leitungsbereichs; es gilt der Schnitt | Warnung |
 | W104 | Min > Max; es gilt der volle Leitungsbereich | Warnung |
+| W107 | Knoten mehrfach in `BU_` aufgeführt | Warnung |
 | W406 | Name beginnt mit einer Ziffer (in DBC nicht erlaubt, kommt aber vor) | Warnung |
 
 **Mit dem Generator (M4/M7):**
@@ -584,7 +592,7 @@ Ideen nach 1.0 und alles Zurückgestellte stehen in Abschnitt 10.
 |---|---|---|---|
 | **M0** | Grundgerüst & Build | Paketstruktur, Versionsprüfung, Vendoring mit Hash-, Lizenz- und Pure-Python-Prüfung, reproduzierbarer `.pyz`-Build, CI-Matrix | **erledigt** |
 | **M1** | Parser & Writer | Datenmodell, Statement-Klassen und Verweise, Parser mit Fehlerpositionen, Writer mit Originaltext und Dirty-Flag, Encoding-Stufen, atomares Speichern mit Änderungserkennung, Einstellungs-Attribute | **erledigt** bis auf den manuellen CANdb++-Check |
-| **M2** | Layout, Numerik, Lint | `layout.py` (Bitmapping, Überlappung, DLC), `numerics.py` (Bereiche, Typwahl, `Conversion`, float-Prüfung durch vollständiges Durchrechnen, double per Schranke, Python-Referenz für Encode/Decode), `lint.py` mit den Regeln aus Abschnitt 5, `check`; Aufräumen von `settings.py` (2.4) | Bitmapping-Tests erschöpfend grün. Einstufung stimmt für die festen Fälle. `check` meldet über den ganzen Korpus nur erklärbare Befunde. |
+| **M2** | Layout, Numerik, Lint | `layout.py` (Bitmapping, Überlappung, DLC), `numerics.py` (Bereiche, Typwahl, `Conversion`, float-Prüfung durch vollständiges Durchrechnen, double per Schranke, Python-Referenz für Encode/Decode), `lint.py` mit den Regeln aus Abschnitt 5, `check`; Aufräumen von `settings.py` (2.4) | **erledigt** |
 | **M3** | TUI-Grundgerüst | App, Theme, Screen-Navigation, Standarddialoge, Datei öffnen/neu/speichern, Undo/Redo-Anbindung, Notfall-Speicherung, Dialoge für externe Änderungen und gesperrte Dateien, bereinigte Anzeige, Interaktionstests | Navigation durch eine geladene DBC (nur lesend plus Speichern) in Windows Terminal und macOS Terminal. Interaktionstests grün. |
 | **M4** | C-Generator MVP | Normale Signale, signed/unsigned, Intel/Motorola, Ganzzahl/float/double, pack/unpack mit Bereichsprüfung auf Rohwerten, optionaler strenger Quantisierungsprüfung und atomarem Vertrag, Guards gegen unsichere Compiler-Modi, C++-Einbindung, Präfix/Namen (lange Namen, Ziffern am Anfang), generierte C-Tests, `gen`/`gen --check` | Generierte Tests kompilieren warnungsfrei mit gcc, clang und MSVC (C11 und C++17) und laufen grün, auch mit `-ffp-contract=fast` auf arm64. Rohwerte und Frames stimmen mit cantools überein. |
 | **M5** | TUI-Editor | Formulare und Listen für Knoten, Nachrichten, Signale (inkl. Wertbeschreibungen), Netzwerk-Einstellungen; Änderungsbefehle mit Verweisbehandlung, Eingabeprüfung gegen den Codec der Datei, Live-Prüfung, Prüfergebnisse mit Sprung, Suche, Generieren mit Vorschau | Eine DBC lässt sich komplett in der TUI anlegen und generieren. CANdb++ öffnet sie fehlerfrei. Kein Änderungsbefehl hinterlässt Verweise ins Leere. |
@@ -618,6 +626,25 @@ Der Inhalts-Digest der `.pyz` ist in allen 9 CI-Builds gleich.
 - Fehlende `;` vor dem nächsten Statement werden toleriert.
 - `//`-Zeilenkommentare werden als Leerraum erhalten.
 - Namen über 32 Zeichen stehen in den Attributen `System*LongSymbol`. Das Modell bietet sie als `long_name` an, der Generator verwendet sie.
+
+**Stand M2 (2026-11-20):** umgesetzt.
+
+- `layout.py`: Bitpositionen für Intel und Motorola, erschöpfend getestet für alle Startbit/Längen-Kombinationen in 8 und 64 Byte; für alle unterschiedlichen Signal-Layouts im Korpus bitgleich mit cantools.
+- `numerics.py`: Prüfung in drei Stufen (3.3). Gegen eine unabhängige Brute-Force-Rechnung, die beide Varianten exakt in Bruchrechnung nachbildet, ist sie korrekt: Kein akzeptiertes Signal fällt dort durch, und in 256 Kombinationen wurde kein Signal unnötig abgelehnt.
+- `lint.py` mit den Regeln aus Abschnitt 5 (dazu E113 und W107), `dbc2h check [--signals]` mit Exit-Code 0/1/2.
+- Korpus: `check` läuft über alle 147 Dateien in ca. 2 s. Die Befunde sind erklärbar und in einem Test festgeschrieben:
+
+  | Regel | Anzahl | Erklärung |
+  |---|---|---|
+  | E101 | 1913 | 1883 davon in `gm_global_a_lowspeed_1818125.dbc`: GM definiert „Group“-Signale, die die eigentlichen Signale überdecken; Rest echte Überlappungen |
+  | E102 | 18 | Signale über das DLC hinaus und eine Testdatei mit DLC 10 |
+  | E108 | 37 | Kommentare und Sender-Listen zu nicht vorhandenen Nachrichten/Knoten |
+  | E110 | 25 | erweitertes Multiplexing |
+  | E112 | 76 | opendbc nutzt Standard-IDs > 0x7FF als Pseudo-IDs |
+  | E201 | 82 | 24-/32-Bit-Signale mit nicht dyadischem Faktor sind als float zu ungenau (Abhilfe: double) |
+  | W103 | 884 | Min/Max außerhalb des Leitungsbereichs (häufig in opendbc) |
+  | W104 / W107 / W406 | 4 / 2 / 10 | Min > Max, doppelte Knoten, Namen mit Ziffer am Anfang |
+- Tests: 736 grün auf macOS (Python 3.15), 735 auf Windows (Python 3.13).
 
 **Pflichtinhalte der Benutzerdokumentation (M8):**
 

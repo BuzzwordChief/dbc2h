@@ -99,3 +99,14 @@ def test_redirected_output_is_utf8(built_pyz, clean_python):
     proc = subprocess.run([str(clean_python), str(built_pyz.path), "--version"], capture_output=True)
     assert proc.returncode == 0
     assert "Gebündelt".encode("utf-8") in proc.stdout
+
+
+def test_check_runs_from_the_archive_without_textual(built_pyz, clean_python, tmp_path):
+    dbc = tmp_path / "net.dbc"
+    dbc.write_text('BU_: A\nBO_ 1 M: 8 A\n SG_ s : 0|16@1+ (0.1,0) [0|0] "" A\n', encoding="cp1252")
+    proc = run_pyz(clean_python, built_pyz.path, "check", str(dbc))
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    code = (f"import sys; sys.path.insert(0, {str(built_pyz.path)!r}); from dbc2h.cli import main; "
+            f"rc = main(['check', {str(dbc)!r}]); print('textual loaded:', 'textual' in sys.modules)")
+    proc = subprocess.run([str(clean_python), "-c", code], capture_output=True, text=True)
+    assert "textual loaded: False" in proc.stdout, proc.stdout + proc.stderr

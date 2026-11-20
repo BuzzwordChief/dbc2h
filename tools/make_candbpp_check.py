@@ -88,13 +88,10 @@ def build(utf8: bool) -> DbcFile:
     settings.set_setting(doc, net, "dbc2h_FloatType", "double")
     settings.set_setting(doc, net, "dbc2h_StrictQuantization", 1)
     settings.set_setting(doc, net, "dbc2h_FloatEpsLsb", Fraction(1, 32))
-    settings.set_setting(doc, net, "dbc2h_OutputMode", "split")
     settings.set_setting(doc, net, "dbc2h_OutputDir", "gen/can")
-    settings.set_setting(doc, net, "dbc2h_Lint", "E103=warning,W405=off")
     settings.set_setting(doc, ext, "dbc2h_MsgIgnore", 1)
     settings.set_setting(doc, speed, "dbc2h_SigFloatType", "float")
     settings.set_setting(doc, temp, "dbc2h_SigIgnore", 1)
-    settings.set_setting(doc, gear, "dbc2h_SigEnumComplete", 1)
     return f
 
 

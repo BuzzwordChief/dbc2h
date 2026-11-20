@@ -17,7 +17,7 @@ def test_check_files_load_back_with_all_settings():
         net = f.document.network
         assert settings.conflicts(net) == []
         assert settings.get_setting(net, net, "dbc2h_FloatType") == "double"
-        assert settings.get_setting(net, net, "dbc2h_OutputMode") == "split"
+        assert settings.get_setting(net, net, "dbc2h_StrictQuantization") == 1
         status = net.message_by_name("VehicleStatus")
         assert status.comment == make_candbpp_check.BACKSLASH_COMMENT
         assert settings.get_setting(net, status.signals[0], "dbc2h_SigFloatType") == "float"

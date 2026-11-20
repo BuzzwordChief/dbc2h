@@ -42,13 +42,10 @@ SETTINGS: dict[str, Setting] = {
         _bool("dbc2h_StrictQuantization", ObjectType.NETWORK),
         Setting("dbc2h_FloatEpsLsb", ObjectType.NETWORK, AttributeType.FLOAT, Fraction(1, 16),
                 minimum=Fraction(0), maximum=Fraction(1, 2)),
-        Setting("dbc2h_OutputMode", ObjectType.NETWORK, AttributeType.ENUM, "header_only", ("header_only", "split")),
         Setting("dbc2h_OutputDir", ObjectType.NETWORK, AttributeType.STRING, "."),
-        Setting("dbc2h_Lint", ObjectType.NETWORK, AttributeType.STRING, ""),
         _bool("dbc2h_MsgIgnore", ObjectType.MESSAGE),
         Setting("dbc2h_SigFloatType", ObjectType.SIGNAL, AttributeType.ENUM, "default", ("default", "float", "double")),
         _bool("dbc2h_SigIgnore", ObjectType.SIGNAL),
-        _bool("dbc2h_SigEnumComplete", ObjectType.SIGNAL),
     )
 }
 

@@ -3,7 +3,7 @@
 Werkzeug zum Erstellen, Verwalten und Exportieren von DBC-Dateien als C11-Header.
 Plan und Meilensteine: [PLAN.md](PLAN.md).
 
-Stand: **M1 (Parser & Writer)**. Der Kern liest und schreibt DBC-Dateien verlustfrei; die TUI zeigt bisher nur eine Startseite.
+Stand: **M2 (Layout, Numerik, Lint)**. Der Kern liest und schreibt DBC-Dateien verlustfrei und prüft sie (`dbc2h check`); die TUI zeigt bisher nur eine Startseite.
 
 ## Benutzen
 
@@ -13,6 +13,7 @@ Voraussetzung ist Python 3.13 oder neuer, sonst nichts.
 python dbc2h.pyz                  # TUI starten
 python dbc2h.pyz powertrain.dbc   # TUI mit Datei
 python dbc2h.pyz --version        # Version und gebündelte Bibliotheken
+python dbc2h.pyz check net.dbc    # Prüfen (Lint, Numerik); --signals listet jedes Signal
 ```
 
 ## Entwickeln

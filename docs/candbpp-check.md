@@ -26,7 +26,7 @@ Für jede der beiden Dateien:
 | # | Frage | Erwartet |
 |---|---|---|
 | 1 | Öffnet CANdb++ die Datei ohne Fehler- oder Warnmeldung? | ja |
-| 2 | Erscheinen alle 11 `dbc2h_*`-Attribute unter *View → Attribute Definitions* mit dem richtigen Objekttyp (7 × Network, 1 × Message, 3 × Signal)? | ja |
+| 2 | Erscheinen alle 8 `dbc2h_*`-Attribute unter *View → Attribute Definitions* mit dem richtigen Objekttyp (5 × Network, 1 × Message, 2 × Signal)? | ja |
 | 3 | Haben die Attribute die Werte aus der Tabelle unten? | ja |
 | 4 | Wie zeigt CANdb++ den Kommentar der Nachricht `VehicleStatus` an? | `Pfad C:\temp\neu und "Anführungszeichen"` (einfache Backslashes). Steht dort `C:\\temp\\neu`, behandelt CANdb++ `\\` nicht als Escape. Dann muss der Writer Backslashes unverändert schreiben. |
 | 5 | Werden `°C` (Einheit von `coolant_temp`) und `ü` (Kommentar von `speed`) richtig angezeigt? | ja, in beiden Dateien |
@@ -42,13 +42,10 @@ Für jede der beiden Dateien:
 | Network | `dbc2h_FloatType` | `1` | `double` |
 | Network | `dbc2h_StrictQuantization` | `1` | an |
 | Network | `dbc2h_FloatEpsLsb` | `0.03125` | 1/32 LSB |
-| Network | `dbc2h_OutputMode` | `1` | `split` |
 | Network | `dbc2h_OutputDir` | `gen/can` | |
-| Network | `dbc2h_Lint` | `E103=warning,W405=off` | |
 | Message `ExtendedMsg` | `dbc2h_MsgIgnore` | `1` | |
 | Signal `speed` | `dbc2h_SigFloatType` | `1` | `float` |
 | Signal `coolant_temp` | `dbc2h_SigIgnore` | `1` | |
-| Signal `gear` | `dbc2h_SigEnumComplete` | `1` | |
 
 ## Ergebnis
 

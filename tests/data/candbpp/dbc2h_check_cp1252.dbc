@@ -54,37 +54,28 @@ BA_DEF_  "dbc2h_Prefix" STRING ;
 BA_DEF_  "dbc2h_FloatType" ENUM "float","double";
 BA_DEF_  "dbc2h_StrictQuantization" INT 0 1;
 BA_DEF_  "dbc2h_FloatEpsLsb" FLOAT 0 0.5;
-BA_DEF_  "dbc2h_OutputMode" ENUM "header_only","split";
 BA_DEF_  "dbc2h_OutputDir" STRING ;
-BA_DEF_  "dbc2h_Lint" STRING ;
 BA_DEF_ BO_  "dbc2h_MsgIgnore" INT 0 1;
 BA_DEF_ SG_  "dbc2h_SigFloatType" ENUM "default","float","double";
 BA_DEF_ SG_  "dbc2h_SigIgnore" INT 0 1;
-BA_DEF_ SG_  "dbc2h_SigEnumComplete" INT 0 1;
 
 BA_DEF_DEF_  "dbc2h_Prefix" "";
 BA_DEF_DEF_  "dbc2h_FloatType" "float";
 BA_DEF_DEF_  "dbc2h_StrictQuantization" 0;
 BA_DEF_DEF_  "dbc2h_FloatEpsLsb" 0.0625;
-BA_DEF_DEF_  "dbc2h_OutputMode" "header_only";
 BA_DEF_DEF_  "dbc2h_OutputDir" ".";
-BA_DEF_DEF_  "dbc2h_Lint" "";
 BA_DEF_DEF_  "dbc2h_MsgIgnore" 0;
 BA_DEF_DEF_  "dbc2h_SigFloatType" "default";
 BA_DEF_DEF_  "dbc2h_SigIgnore" 0;
-BA_DEF_DEF_  "dbc2h_SigEnumComplete" 0;
 
 BA_ "dbc2h_Prefix" "pt";
 BA_ "dbc2h_FloatType" 1;
 BA_ "dbc2h_StrictQuantization" 1;
 BA_ "dbc2h_FloatEpsLsb" 0.03125;
-BA_ "dbc2h_OutputMode" 1;
 BA_ "dbc2h_OutputDir" "gen/can";
-BA_ "dbc2h_Lint" "E103=warning,W405=off";
 BA_ "dbc2h_MsgIgnore" BO_ 2566844672 1;
 BA_ "dbc2h_SigFloatType" SG_ 291 speed 1;
 BA_ "dbc2h_SigIgnore" SG_ 291 coolant_temp 1;
-BA_ "dbc2h_SigEnumComplete" SG_ 291 gear 1;
 
 VAL_ 291 gear 0 "Park" 1 "Reverse" 2 "Neutral" 3 "Drive" ;
 
