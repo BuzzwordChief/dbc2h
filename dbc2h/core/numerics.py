@@ -161,6 +161,7 @@ class Kind(enum.StrEnum):
     IEEE64 = "ieee64"     # SIG_VALTYPE_ 2: IEEE double on the bus
 
 
+INT64_MIN, INT64_MAX = -(1 << 63), (1 << 63) - 1
 INT_TYPES = [(bits, signed) for bits in (8, 16, 32, 64) for signed in (False, True)]
 
 
@@ -340,6 +341,13 @@ def check(network: Network, sig: Signal) -> CheckResult:
         if conv.c_type is None:
             return CheckResult(Status.LOSSY, conv, reason="physikalischer Bereich passt nicht in 64 Bit",
                                remedies=("Länge reduzieren", "Faktor oder Offset ändern"), rule="E202")
+        if not (conv.factor == 1 and conv.offset == 0):
+            lo, hi = conv.ranges.wire
+            extremes = (lo, hi, lo * conv.factor + conv.offset, hi * conv.factor + conv.offset)
+            if any(not INT64_MIN <= x <= INT64_MAX for x in extremes):
+                return CheckResult(Status.LOSSY, conv, rule="E202",
+                                   reason="mit Faktor oder Offset wird in int64_t gerechnet; der Bereich passt nicht hinein",
+                                   remedies=("Länge reduzieren", "Faktor 1 und Offset 0 verwenden"))
         return CheckResult(Status.EXACT, conv)
     if conv.kind in (Kind.IEEE32, Kind.IEEE64):
         if conv.factor == 1 and conv.offset == 0:

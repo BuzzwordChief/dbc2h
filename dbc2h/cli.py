@@ -1,7 +1,7 @@
 """Command line handling of dbc2h.
 
 Without a subcommand dbc2h starts the TUI. The non-interactive subcommands for build
-systems (check; gen follows in M4) must not import Textual.
+systems (check, gen) must not import Textual.
 """
 
 from __future__ import annotations
@@ -121,7 +121,73 @@ def check_command(argv: list[str]) -> int:
     return 1 if errors else 0
 
 
-SUBCOMMANDS = {"check": check_command}
+def build_gen_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog=f"{_prog()} gen",
+        description="C-Header aus einer DBC-Datei erzeugen. Exit-Code 1 bei Fehlern in der DBC oder "
+                    "(mit --check) bei veralteten Dateien, 2 wenn die Datei nicht gelesen werden kann.",
+    )
+    parser.add_argument("file", type=Path, help="DBC-Datei")
+    parser.add_argument("-o", "--output", type=Path, help="Ausgabeverzeichnis (Standard: dbc2h_OutputDir "
+                        "relativ zur DBC)")
+    parser.add_argument("--tests", action="store_true", help="zusätzlich test_<prefix>.c erzeugen")
+    parser.add_argument("--check", action="store_true", help="nichts schreiben, nur prüfen, ob die Dateien "
+                        "aktuell sind")
+    parser.add_argument("--run-tests", action="store_true", help="test_<prefix>.c übersetzen und ausführen "
+                        "(impliziert --tests)")
+    return parser
+
+
+def gen_command(argv: list[str]) -> int:
+    import tempfile
+
+    from dbc2h.core import codegen_c, compilers, settings
+    from dbc2h.core.dbcfile import DbcFile
+    from dbc2h.core.lexer import DbcSyntaxError
+
+    args = build_gen_parser().parse_args(argv)
+    try:
+        dbc = DbcFile.load(args.file)
+    except (OSError, DbcSyntaxError) as exc:
+        print(f"{args.file}: {getattr(exc, 'strerror', None) or exc}", file=sys.stderr)
+        return 2
+    doc = dbc.document
+    try:
+        out = codegen_c.generate(doc, args.file.name)
+    except codegen_c.GenerationError as exc:
+        for f in exc.findings:
+            print(f.format())
+        print(f"{args.file.name}: {len(exc.findings)} Fehler, nichts erzeugt")
+        return 1
+    out_dir = args.output or (args.file.parent / settings.get_setting(doc.network, doc.network, "dbc2h_OutputDir"))
+    files = {out.header_name: out.header}
+    if args.tests or args.run_tests:
+        files[out.test_name] = out.test
+    for name, reason in out.skipped:
+        print(f"übersprungen: {name} ({reason})")
+    if args.check:
+        stale = [n for n, text in files.items()
+                 if not (out_dir / n).is_file() or (out_dir / n).read_bytes() != text.encode("ascii")]
+        for n in stale:
+            print(f"veraltet: {out_dir / n}")
+        return 1 if stale else 0
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for name, text in files.items():
+        (out_dir / name).write_bytes(text.encode("ascii"))
+        print(f"geschrieben: {out_dir / name}")
+    if args.run_tests:
+        found = compilers.find_compilers()
+        if not found:
+            print("kein C-Compiler gefunden (gcc, clang, cc oder cl)", file=sys.stderr)
+            return 1
+        with tempfile.TemporaryDirectory() as tmp:
+            result = compilers.build_and_run(found[0], out_dir / out.test_name, out_dir, Path(tmp))
+        print(f"{found[0].version}: {result.output.strip()}")
+        return 0 if result.ok else 1
+    return 0
+
+
+SUBCOMMANDS = {"check": check_command, "gen": gen_command}
 
 
 def main(argv: list[str] | None = None) -> int:

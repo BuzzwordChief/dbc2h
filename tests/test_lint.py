@@ -79,7 +79,7 @@ def test_findings_carry_line_and_severity():
 # Reviewed when M2 was accepted: every count below is explained in PLAN.md (Stand M2).
 EXPECTED_CORPUS_FINDINGS = {
     "E101": 1913, "E102": 18, "E108": 37, "E110": 25, "E112": 76, "E201": 82,
-    "W103": 884, "W104": 4, "W107": 2, "W406": 10,
+    "E301": 4, "W103": 884, "W104": 4, "W107": 2, "W406": 10,
 }
 
 

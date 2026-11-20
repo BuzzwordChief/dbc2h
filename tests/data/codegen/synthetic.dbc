@@ -1,0 +1,36 @@
+VERSION ""
+
+BU_: ECU_Engine ECU_Brake
+
+BO_ 291 VehicleStatus: 8 ECU_Engine
+ SG_ speed : 0|16@1+ (0.25,0) [0|16383.75] "km/h" ECU_Brake
+ SG_ coolant_temp : 23|8@0+ (0.75,-48) [-48|143.25] "°C" ECU_Brake
+ SG_ temp : 31|8@0- (0.1,-40) [-52.8|-27.3] "" ECU_Brake
+ SG_ torque : 32|11@1+ (1,-500) [-500|1547] "Nm" ECU_Brake
+ SG_ class : 43|5@1+ (2,10) [10|72] "" ECU_Brake
+ SG_ neg : 48|12@1+ (-0.05,100) [0|0] "" ECU_Brake
+ SG_ flag : 60|1@1+ (1,0) [0|1] "" ECU_Brake
+
+BO_ 2566844672 ExtendedMsg: 8 ECU_Brake
+ SG_ odo : 7|40@0+ (0.001,0) [0|0] "km" ECU_Engine
+ SG_ 0_COUNTER : 40|4@1+ (1,0) [0|15] "" ECU_Engine
+ SG_ wide : 44|20@1- (1,0) [0|0] "" ECU_Engine
+
+BO_ 512 Wide64: 8 ECU_Brake
+ SG_ big : 0|64@1+ (1,0) [0|0] "" ECU_Engine
+
+BO_ 513 Signed64: 8 ECU_Brake
+ SG_ sbig : 7|64@0- (1,0) [0|0] "" ECU_Engine
+
+BO_ 514 Empty: 0 ECU_Brake
+
+BO_ 515 NoSignals: 4 ECU_Brake
+
+CM_ BO_ 291 "Fahrzeugstatus mit Umlaut ä und */ Kommentarende";
+CM_ SG_ 291 speed "Geschwindigkeit über Grund";
+BA_DEF_ BO_  "GenMsgCycleTime" INT 0 65535;
+BA_DEF_ SG_  "dbc2h_SigFloatType" ENUM "default","float","double";
+BA_DEF_DEF_  "GenMsgCycleTime" 0;
+BA_DEF_DEF_  "dbc2h_SigFloatType" "default";
+BA_ "GenMsgCycleTime" BO_ 291 20;
+BA_ "dbc2h_SigFloatType" SG_ 2566844672 odo 2;

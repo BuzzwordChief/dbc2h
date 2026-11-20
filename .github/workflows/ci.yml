@@ -20,12 +20,18 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           allow-prereleases: true
+      - name: MSVC environment (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
       - name: Verify vendored wheels
         run: python tools/vendor.py verify
       - name: Install dev tools and vendored wheels
         run: python tools/dev_env.py --here
       - name: Tests (source tree and built .pyz in a clean venv)
         run: python -m pytest -v
+        env:
+          # Compile the generated C tests for every error-free corpus file once (gcc and clang).
+          DBC2H_FULL_C_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.python == '3.13' && '1' || '' }}
       - name: Build dbc2h.pyz
         run: python tools/build_pyz.py -o dist/dbc2h.pyz --digest-file dist/content-digest.txt
       - uses: actions/upload-artifact@v4

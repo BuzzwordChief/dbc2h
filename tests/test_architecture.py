@@ -23,6 +23,7 @@ def test_core_uses_only_the_standard_library_and_core():
     for path in (REPO / "dbc2h" / "core").rglob("*.py"):
         for name in imported_modules(path):
             if name.startswith("dbc2h"):
-                assert name.startswith("dbc2h.core"), f"{path.name} importiert {name}"
+                # dbc2h/__init__.py only holds the version number
+                assert name == "dbc2h" or name.startswith("dbc2h.core"), f"{path.name} importiert {name}"
             else:
                 assert name in sys.stdlib_module_names or name == "__future__", f"{path.name} importiert {name}"

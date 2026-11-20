@@ -594,7 +594,7 @@ Ideen nach 1.0 und alles Zurückgestellte stehen in Abschnitt 10.
 | **M1** | Parser & Writer | Datenmodell, Statement-Klassen und Verweise, Parser mit Fehlerpositionen, Writer mit Originaltext und Dirty-Flag, Encoding-Stufen, atomares Speichern mit Änderungserkennung, Einstellungs-Attribute | **erledigt** bis auf den manuellen CANdb++-Check |
 | **M2** | Layout, Numerik, Lint | `layout.py` (Bitmapping, Überlappung, DLC), `numerics.py` (Bereiche, Typwahl, `Conversion`, float-Prüfung durch vollständiges Durchrechnen, double per Schranke, Python-Referenz für Encode/Decode), `lint.py` mit den Regeln aus Abschnitt 5, `check`; Aufräumen von `settings.py` (2.4) | **erledigt** |
 | **M3** | TUI-Grundgerüst | App, Theme, Screen-Navigation, Standarddialoge, Datei öffnen/neu/speichern, Undo/Redo-Anbindung, Notfall-Speicherung, Dialoge für externe Änderungen und gesperrte Dateien, bereinigte Anzeige, Interaktionstests | Navigation durch eine geladene DBC (nur lesend plus Speichern) in Windows Terminal und macOS Terminal. Interaktionstests grün. |
-| **M4** | C-Generator MVP | Normale Signale, signed/unsigned, Intel/Motorola, Ganzzahl/float/double, pack/unpack mit Bereichsprüfung auf Rohwerten, optionaler strenger Quantisierungsprüfung und atomarem Vertrag, Guards gegen unsichere Compiler-Modi, C++-Einbindung, Präfix/Namen (lange Namen, Ziffern am Anfang), generierte C-Tests, `gen`/`gen --check` | Generierte Tests kompilieren warnungsfrei mit gcc, clang und MSVC (C11 und C++17) und laufen grün, auch mit `-ffp-contract=fast` auf arm64. Rohwerte und Frames stimmen mit cantools überein. |
+| **M4** | C-Generator MVP | Normale Signale, signed/unsigned, Intel/Motorola, Ganzzahl/float/double, pack/unpack mit Bereichsprüfung auf Rohwerten, optionaler strenger Quantisierungsprüfung und atomarem Vertrag, Guards gegen unsichere Compiler-Modi, C++-Einbindung, Präfix/Namen (lange Namen, Ziffern am Anfang), generierte C-Tests, `gen`/`gen --check` | **erledigt** |
 | **M5** | TUI-Editor | Formulare und Listen für Knoten, Nachrichten, Signale (inkl. Wertbeschreibungen), Netzwerk-Einstellungen; Änderungsbefehle mit Verweisbehandlung, Eingabeprüfung gegen den Codec der Datei, Live-Prüfung, Prüfergebnisse mit Sprung, Suche, Generieren mit Vorschau | Eine DBC lässt sich komplett in der TUI anlegen und generieren. CANdb++ öffnet sie fehlerfrei. Kein Änderungsbefehl hinterlässt Verweise ins Leere. |
 | **M6** | Bit-Layout & Frame-Tester | Bit-Grid-Widget (Tastatur) mit Mux-Auswahl, Auto-Placement, Frame-Tester | Signal per Pfeiltasten verschieben ergibt korrektes Startbit für beide Byte-Orders |
 | **M7** | Generator vollständig | Wertetabellen-Konstanten mit `to_string`, einfaches Multiplexing mit benannter Union, CAN FD, `SIG_VALTYPE_` | Golden-Files und generierte C-Tests grün |
@@ -645,6 +645,22 @@ Der Inhalts-Digest der `.pyz` ist in allen 9 CI-Builds gleich.
   | W103 | 884 | Min/Max außerhalb des Leitungsbereichs (häufig in opendbc) |
   | W104 / W107 / W406 | 4 / 2 / 10 | Min > Max, doppelte Knoten, Namen mit Ziffer am Anfang |
 - Tests: 736 grün auf macOS (Python 3.15), 735 auf Windows (Python 3.13).
+
+**Stand M4 (2026-11-20):** umgesetzt. Beispielausgabe: `docs/example/synthetic.h` und `test_synthetic.c` (ein Test hält sie aktuell).
+
+- `dbc2h gen net.dbc [-o DIR] [--tests] [--check] [--run-tests]`. Ausgabe: `<prefix>.h` (header-only) und optional `test_<prefix>.c`; Präfix aus `dbc2h_Prefix`, sonst aus dem Dateinamen; Verzeichnis aus `-o`, sonst `dbc2h_OutputDir` relativ zur DBC. Bei Fehlern in der DBC wird nichts geschrieben (Exit-Code 1).
+- **Namen:** Nachrichten und Signale in snake_case (lange Namen bevorzugt), Makros in Großbuchstaben, z. B. `pt_vehicle_status_t`, `pt_vehicle_status_pack()`, `PT_VEHICLE_STATUS_SPEED_RAW_MAX`. Schlüsselwörter aus C und C++ bekommen ein `_` angehängt (`class_`), Ziffern am Anfang ein `_` vorangestellt (`_0_counter`). Gleiche Bezeichner aus verschiedenen Objekten sind Fehler `E301` (im Korpus 4×, z. B. `Static` und `Static_`).
+- **Ganzzahlpfad:** Rechnung in `int64_t`; ohne strenge Prüfung wird bei Faktor ≠ 1 auf den nächsten Rohwert gerundet (Hälfte weg von null). Integer-Signale mit Faktor/Offset, deren Bereich nicht in `int64_t` passt, sind `E202`.
+- Nachrichten mit Multiplexing oder IEEE-Signalen werden bis M7 übersprungen; der Header nennt sie in einem Kommentar, `gen` meldet sie.
+- **Tests gegen echte Compiler**, alle mit den Warnflags aus Abschnitt 4 und `-Werror` bzw. `/WX`:
+
+  | Compiler | Konfigurationen | Ergebnis |
+  |---|---|---|
+  | Apple clang 21, macOS arm64 (lokal) | C11, C++17, gnu11 mit `-ffp-contract=fast` (FMA) | alle 99 fehlerfreien Korpusdateien + synthetische Datei grün (297 + Stichprobe) |
+  | MSVC 19.29 (VS 2019), Windows x64 | `/std:c11`, `/TP /std:c++17` | Stichprobe (9 Dateien) grün |
+  | gcc und clang, Linux x86-64 (CI) | C11, C++17, gnu11 mit `-ffp-contract=fast` | in der CI, alle Korpusdateien in einem Job |
+- Die generierten Tests erkennen absichtlich eingebaute Fehler (falscher Shift, falscher Faktor, nicht genullter Puffer); eine Abweichung des Faktors um 0,1 % bleibt bei 8 Bit folgenlos, weil die Rundung trotzdem den richtigen Rohwert trifft.
+- Python-Referenz gegen cantools: Werte und Round-Trip für zufällige Frames in 8 Korpusdateien gleich.
 
 **Pflichtinhalte der Benutzerdokumentation (M8):**
 

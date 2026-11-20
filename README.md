@@ -3,7 +3,7 @@
 Werkzeug zum Erstellen, Verwalten und Exportieren von DBC-Dateien als C11-Header.
 Plan und Meilensteine: [PLAN.md](PLAN.md).
 
-Stand: **M2 (Layout, Numerik, Lint)**. Der Kern liest und schreibt DBC-Dateien verlustfrei und prüft sie (`dbc2h check`); die TUI zeigt bisher nur eine Startseite.
+Stand: **M4 (C-Generator)**. Der Kern liest und schreibt DBC-Dateien verlustfrei, prüft sie (`dbc2h check`) und erzeugt C-Header (`dbc2h gen`); die TUI zeigt bisher nur eine Startseite.
 
 ## Benutzen
 
@@ -14,6 +14,9 @@ python dbc2h.pyz                  # TUI starten
 python dbc2h.pyz powertrain.dbc   # TUI mit Datei
 python dbc2h.pyz --version        # Version und gebündelte Bibliotheken
 python dbc2h.pyz check net.dbc    # Prüfen (Lint, Numerik); --signals listet jedes Signal
+python dbc2h.pyz gen net.dbc -o gen/          # C11-Header erzeugen (auch aus C++ nutzbar)
+python dbc2h.pyz gen net.dbc -o gen/ --check  # Exit-Code 1, wenn der Header veraltet ist
+python dbc2h.pyz gen net.dbc --run-tests      # zusätzlich test_<prefix>.c erzeugen, übersetzen, ausführen
 ```
 
 ## Entwickeln

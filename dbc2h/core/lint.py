@@ -11,7 +11,7 @@ import enum
 from collections import Counter
 from dataclasses import dataclass
 
-from dbc2h.core import layout, numerics, settings
+from dbc2h.core import layout, naming, numerics, settings
 from dbc2h.core.document import Document
 from dbc2h.core.model import NO_NODE, Message, Signal, ValueType
 from dbc2h.core.statements import RefKind, Statement, StatementClass
@@ -86,6 +86,7 @@ class _Linter:
         extended_mux = {s.info.get("message_id") for s in self.doc.statements if s.kind == "SG_MUL_VAL_"}
         for msg in active:
             self.message(msg, msg.raw_id in extended_mux)
+        self.identifiers(active)
         self.out.sort(key=lambda f: (f.line or 0, f.severity, f.rule))
         return self.out
 
@@ -140,6 +141,21 @@ class _Linter:
                     return ref.name in rel_attrs
                 return self.net.attribute_definition(ref.name) is not None
         return True
+
+    def identifiers(self, messages: list[Message]) -> None:
+        """E301: two objects would get the same C identifier (checked with a neutral prefix)."""
+        groups = [(m, [s for s in m.signals if not self.ignored(s)]) for m in messages]
+        reported: set[tuple[int, int]] = set()
+        for ident, first, second in naming.collisions("p", groups):
+            if (id(first), id(second)) in reported:
+                continue
+            reported.add((id(first), id(second)))
+            where = f"{second.message.name}.{second.name}" if isinstance(second, Signal) else second.name
+            other = first if isinstance(first, str) else (
+                f"{first.message.name}.{first.name}" if isinstance(first, Signal) else first.name)
+            key = "SG_" if isinstance(second, Signal) else "BO_"
+            shown = ident[2:] if ident.startswith(("p_", "P_")) else ident
+            self.error("E301", where, f"gleicher C-Bezeichner wie {other} ('{shown}')", second, key)
 
     def duplicate_ids(self, messages: list[Message]) -> None:
         for raw_id, count in Counter(m.raw_id for m in messages).items():
